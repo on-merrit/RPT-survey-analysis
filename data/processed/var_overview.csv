@@ -1,0 +1,93 @@
+var_id,var_full
+X1,Response ID
+X2,Date submitted
+X3,Last page
+X4,Start language
+X5,Seed
+X6,Token
+X7,"I hereby consent to the processing of my given data for the selected purposes.  {if(((Q0_SQ001==""2"") or (Q0_SQ002==""2"") or (Q0_SQ003==""2"") or (Q0_SQ004==""2"")), ""WARNING: You need to agree to all four statements, otherwise you will not be able to continue with the survey."")}  [I confirm that I have read the participant information]"
+X8,"I hereby consent to the processing of my given data for the selected purposes.  {if(((Q0_SQ001==""2"") or (Q0_SQ002==""2"") or (Q0_SQ003==""2"") or (Q0_SQ004==""2"")), ""WARNING: You need to agree to all four statements, otherwise you will not be able to continue with the survey."")}  [I understand that my participation in this survey is voluntary and all the information will be anonymised]"
+X9,"I hereby consent to the processing of my given data for the selected purposes.  {if(((Q0_SQ001==""2"") or (Q0_SQ002==""2"") or (Q0_SQ003==""2"") or (Q0_SQ004==""2"")), ""WARNING: You need to agree to all four statements, otherwise you will not be able to continue with the survey."")}  [I agree that any data collected may be published in anonymous form in books, reports or journals and shared in presentations]"
+X10,"I hereby consent to the processing of my given data for the selected purposes.  {if(((Q0_SQ001==""2"") or (Q0_SQ002==""2"") or (Q0_SQ003==""2"") or (Q0_SQ004==""2"")), ""WARNING: You need to agree to all four statements, otherwise you will not be able to continue with the survey."")}  [I agree to take part in this survey]"
+X11,Are you conducting research as part of a contract at a higher education institution? 
+X12,In which country is your affiliated institution based? 
+X13,In which country is your affiliated institution based?  [Other]
+X14,What is the name of your institution? (Not a required field).
+X15,Are you on a limited-term contract?
+X16,Are you on a limited-term contract?  [Other]
+X17,Do you see yourself working at the same institution in 5 years?
+X18,Do you see yourself working at the same institution in 5 years?  [Other]
+X19,Do you intend to apply for a promotion within the next 5 years?
+X20,Do you intend to apply for a promotion within the next 5 years?  [Other]
+X21,"For each of the statements below provide your personal level of agreement or disagreement: [I know where to find the promotion policy relevant to my current career stage as a researcher (e.g. institution’s website, intranet or handbook)]"
+X22,For each of the statements below provide your personal level of agreement or disagreement: [I am familiar with the promotion policy that applies to my current career stage]
+X23,"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Publishing a large number of research articles]"
+X24,"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Generating a large number of citations ]"
+X25,"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Generating high-quality publications, as assessed by independent qualitative assessment (e.g. peer review)]"
+X26,"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Publishing in highly regarded journals or conferences (as measured by e.g. journal impact factor, conference rank, etc.)]"
+X27,"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Openly sharing research articles (by publishing in Open Access or depositing in repositories)]"
+X28,"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Openly sharing research data]"
+X29,"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Openly sharing research code or creating research software]"
+X30,"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Engaging with the public (e.g. uptake by non-academic groups, citizen science, science communication)]"
+X31,"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Developing industry collaborations]"
+X32,"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Creating intellectual property (including patents)]"
+X33,"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Engaging policy makers]"
+X34,"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Giving invited talks and keynotes]"
+X35,"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Contributing to peer review ]"
+X36,"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Networking activities (e.g. organising or participating in conferences)]"
+X37,"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Being collegial, helpful and respectful]"
+X38,"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Mentoring PhDs and postdocs]"
+X39,"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Generating funding ]"
+X40,"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Receiving awards]"
+X41,"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Leading projects]"
+X42,Are there any research activities not included in the previous sections that you believe should be recognised in assessment activities by your institution that currently are not?
+X43,How do you feel overall about the relevant research assessment indicators used in promotion processes at your institution?
+X44,"At your institution, is it the case that:   [Where two candidates are equally qualified, candidates from underrepresented groups are preferred (e.g. women/men or minority groups) for promotion]"
+X45,"At your institution, is it the case that:   [Where possible, promotion committees include representative numbers of women and minorities]"
+X46,"Are there other factors (social, political, performance-based, etc.) that are not officially used as promotion criteria, but that you nonetheless believe are important to getting promoted at your institution?"
+X47,"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Publishing a large number of research articles]"
+X48,"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Generating a large number of citations ]"
+X49,"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Generating high-quality publications, as assessed by independent qualitative assessment (e.g. peer review)]"
+X50,"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Publishing in highly regarded journals or conferences (as measured by e.g. journal impact factor, conference rank, etc.)]"
+X51,"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Openly sharing research articles (by publishing in Open Access or depositing in repositories)]"
+X52,"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Openly sharing research data]"
+X53,"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Openly sharing research code or creating research software]"
+X54,"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Engaging with the public (e.g. uptake by non-academic groups, citizen science, science communication)]"
+X55,"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Developing industry collaborations]"
+X56,"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Creating intellectual property (including patents)]"
+X57,"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Engaging policy makers]"
+X58,"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Giving invited talks and keynotes]"
+X59,"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Contributing to peer review ]"
+X60,"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Networking activities (e.g. organising or participating in conferences)]"
+X61,"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Being collegial, helpful and respectful]"
+X62,"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Mentoring PhDs and postdocs]"
+X63,"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Generating funding ]"
+X64,"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Receiving awards]"
+X65,"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Leading projects]"
+X66,"In your personal opinion, to what extent do you agree or disagree with the following: [Where two candidates are equally qualified, candidates from underrepresented groups should be preferred (e.g. women/men or minority groups) for promotion]"
+X67,"In your personal opinion, to what extent do you agree or disagree with the following: [Promotion committees should where possible include representative numbers of women/men and minorities.]"
+X68,"In the last 3 years, how many research articles (including books, book chapters, etc.) did you publish approximately?"
+X69,"Approximately, how many of the papers you published in the last 3 years are Open Access (either on the publisher website or in a repository - institutional or disciplinary?"
+X70,"What, if anything, would incentivise you to make more research articles Open Access (please list up to 3 things). "
+X71,"In the last three years, my choice of publication venue (journal, book publisher, conference, etc.) was influenced by the promotion criteria of my university:"
+X72,"In the last three years, how many research datasets did you approximately produce?"
+X73,"Of the research datasets that you produced in the last three years, approximately how many of them did you openly share (via repositories or data journals)?"
+X74,"What, if anything, would incentivise you to make more datasets openly available (please list up to 3 things). "
+X75,In the last three years how many peer reviews did you approximately carry out?  
+X76,"Of the peer reviews that you have carried out in the last three years, how many approximately were open peer reviews where the review was published alongside the article?"
+X77,"What, if anything, would incentivise you to do more open peer review (please list up to 3 things). "
+X78,"How important, for the success of your research, is it to engage with the public (e.g. uptake by non-academic groups, citizen science, science communication)?"
+X79,"What, if anything, would incentivise you to engage more with the public (please list up to 3 things). "
+X80,"How important, for the success of your research, is it to engage with industry? "
+X81,"What, if anything, would incentivise you to engage more with industry (please list up to 3 things)."
+X82,"How important, for the success of your research, is it to engage with policy makers?"
+X83,"What, if anything, would incentivise you to engage more with policy-makers (please list up to 3 things). "
+X84,What is your gender? 
+X85,What is your academic role?
+X86,What is your academic role? [Other]
+X87,"Which year did you publish your first academic publication (journal article, book, conference proceedings, etc.)?"
+X88,How would you characterise your institution?
+X89,How would you characterise your institution? [Other]
+X90,Select the subject topic of your research:
+X91,Select the subject topic of your research: [Other]
+X92,Is there anything else you would like to share with us regarding this survey?
