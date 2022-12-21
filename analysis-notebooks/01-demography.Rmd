@@ -1,0 +1,219 @@
+---
+title: "Survey demography"
+author: "Thomas Klebel"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    keep_md: true
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggchicklet)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, dpi = 300)
+
+extrafont::loadfonts(device = "win")
+
+theme_set(hrbrthemes::theme_ipsum_rc(base_family = "Hind"))
+
+df <- targets::tar_read(clean_data)
+wb_countries <- targets::tar_read(wb_countries)
+
+custom_blue <- "#3792BD"
+```
+
+
+# Gender (X84)
+
+```{r}
+df %>% make_table(X84, label = "Gender")
+```
+# Academic role (X85)
+```{r}
+make_table(df, X85, label = "Academic role")
+```
+
+Merge junior roles
+
+```{r}
+df %>% 
+  mutate(X85 = case_when(str_detect(X85, "Post-doc") ~ "Prae/Post-doc",
+                         str_detect(X85, "Doctoral") ~ "Prae/Post-doc",
+                         TRUE ~ X85)) %>% 
+  make_table(X85, label = "Academic role")
+```
+
+# Year of first academic publication (X87)
+```{r academic-age}
+df %>% 
+  # fix mis-typed input
+  mutate(X87 = case_when(X87 == 19999 ~ 1999,
+                         X87 == 84 ~ 1984,
+                         TRUE ~ X87)) %>% 
+  ggplot(aes(X87)) +
+  geom_histogram(binwidth = 2, fill = custom_blue) +
+  labs(x = "Year of first publication", y = NULL)
+```
+
+# Type of instiution (X88 + X89)
+Q: "How would you characterise your institution?"
+```{r}
+df %>% 
+  make_table(X88)
+```
+
+Q: "How would you characterise your institution?"
+
+```{r}
+df %>% 
+  count(X89) %>% 
+  drop_na() %>% 
+  knitr::kable()
+```
+# Disciplines (X90 + X91)
+```{r}
+df %>% 
+  make_table(X90)
+```
+
+```{r}
+df %>% 
+  count(X91) %>% 
+  drop_na() %>% 
+  knitr::kable()
+```
+
+
+Disciplines were manually grouped by using the topics from the Web of Science:
+https://images.webofknowledge.com/images/help/WOS/hp_research_areas_easca.html
+
+
+```{r}
+df %>% 
+  drop_na(disciplines_recoded_wos) %>% # there is one missing case
+  make_table(disciplines_recoded_wos)
+```
+
+```{r disciplines}
+plot_bar(df, disciplines_recoded_wos, nudge_y = .01) +
+  labs(caption = "n = 197")
+```
+
+# Type of contract
+```{r}
+# X15 = Are you on a limited-term contract?
+df %>% make_table(X15)
+```
+```{r}
+df %>% 
+  filter(X15 == "Other") %>% 
+  select(X16)
+# one of the "others" is technically on a permanent contract
+```
+
+```{r}
+total_unlimited <- {df %>% filter(X15 == "No") %>% nrow()} + 1
+share <- total_unlimited/nrow(df)
+
+glue::glue("Number and share of researchers on unlimited contract: 
+           {total_unlimited} ({scales::percent(share, .1)})")
+```
+
+
+# Country
+```{r}
+# checking for others
+stopifnot(identical(nrow(filter(df, X12 == "Other")), 0L))
+
+# n for country
+nrow(df)
+
+# inspect country
+df %>% make_table(X12, label = "Country")
+```
+
+```{r}
+# number of countries
+df %>% 
+  summarise(n_countries = n_distinct(X12))
+```
+
+
+```{r}
+# lumping together
+country <- df %>% 
+  mutate(country_lumped = fct_lump_min(X12, min = 4)) %>% 
+  select(X12, country_lumped)
+```
+
+```{r country, fig.width=8, fig.height=5}
+country %>% 
+  count(country_lumped) %>% 
+  mutate(prop = n / sum(n),
+         labels = scales::percent(prop, .1)) %>% 
+  mutate(country_ordered = fct_reorder(country_lumped, n, .fun = max,
+                                       .desc = TRUE) %>% 
+           fct_relevel("Other", after = Inf)) %>% 
+  ggplot(aes(country_ordered, prop)) +
+  geom_text(aes(label = labels), nudge_y = .01, size = 3.8, family = "Hind") +
+  geom_col(width = .7, fill = custom_blue) +
+  # geom_chicklet(width = .8, radius = unit(7, "pt")) +
+  scale_x_discrete(guide = guide_axis(angle = 45, )) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(x = NULL, y = NULL) +
+  hrbrthemes::theme_ipsum_rc(base_family = "Hind", grid = "Y")
+```
+
+Alternative with dotplot
+
+```{r country-dotplot, fig.height=5, fig.width=7}
+plot_bar(country, country_lumped, nudge_y = .005, last_val = "Other")
+```
+
+
+Further classify countries per WP categories. Categories from: 
+https://datahelpdesk.worldbank.org/knowledgebase/articles/906519-world-bank-country-and-lending-groups
+
+```{r}
+# computations were moved higher up the pipeline
+```
+
+```{r country-grouped-percentage, fig.width=6, fig.height=5}
+df %>% 
+  count(Region) %>% 
+  mutate(prop = n / sum(n),
+         labels = scales::percent(prop, .1)) %>% 
+  mutate(country_ordered = fct_reorder(Region, n, .fun = max,
+                                       .desc = TRUE)) %>% 
+  ggplot(aes(country_ordered, prop)) +
+  geom_text(aes(label = labels), nudge_y = .03, size = 3.8, family = "Hind") +
+  geom_col(width = .7, fill = custom_blue) +
+  # geom_chicklet(width = .8, radius = unit(7, "pt")) +
+  scale_x_discrete(guide = guide_axis(angle = 45, )) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(x = NULL, y = NULL) +
+  hrbrthemes::theme_ipsum_rc(base_family = "Hind", grid = "Y")
+```
+
+alternative with n
+```{r country-grouped-n, fig.width=6, fig.height=5}
+df %>% 
+  count(Region) %>% 
+  mutate(prop = n / sum(n),
+         labels = n) %>% 
+  mutate(country_ordered = fct_reorder(Region, n, .fun = max,
+                                       .desc = TRUE)) %>% 
+  ggplot(aes(country_ordered, prop)) +
+  geom_text(aes(label = labels), nudge_y = .03, size = 3.8, family = "Hind") +
+  geom_col(width = .7, fill = custom_blue) +
+  # geom_chicklet(width = .8, radius = unit(7, "pt")) +
+  scale_x_discrete(guide = guide_axis(angle = 45, )) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(x = NULL, y = NULL) +
+  hrbrthemes::theme_ipsum_rc(base_family = "Hind", grid = "Yy")
+```
+
+```{r country-grouped-lollipop}
+plot_bar(df, Region)
+```
+

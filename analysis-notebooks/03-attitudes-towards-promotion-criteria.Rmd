@@ -1,0 +1,596 @@
+---
+title: "Attitudes towards criteria"
+author: "Thomas Klebel"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    keep_md: true
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggchicklet)
+library(patchwork)
+library(janitor)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, dpi = 300)
+
+extrafont::loadfonts(device = "win")
+
+theme_set(hrbrthemes::theme_ipsum_rc(base_family = "Hind"))
+
+df <- targets::tar_read(shareable_data)
+var_overview <- targets::tar_read(var_overview)
+expanded_labels <- targets::tar_read(expanded_labels)
+custom_blue <- "#3792BD"
+```
+
+
+# Institutional view: X23 - X41
+"According to your institutional policies, how important are the following research activities in making promotion decisions in relation to your current career stage?  [Publishing a large number of research articles]"
+
+etc.
+
+```{r}
+step1 <- df %>% 
+  select(X23:X41) %>% 
+  pivot_longer(everything(), names_to = "var", values_to = "val") %>%
+  count(var, val)
+
+# remove dont knows and not applicables
+nas <- step1 %>% 
+  filter(val %in% c("I don't know", "Not applicable"))
+
+pdata <- step1 %>% 
+  anti_join(nas) %>% 
+  mutate(val = fct_relevel(val, "Very important", "Somewhat important",
+                           "Neither important nor unimportant", 
+                           "Somewhat unimportant", "Very unimportant")) %>% 
+  make_proportion(group = var, var = val, order_string = "\\simportant$")
+
+
+# get labels
+labels <- var_overview %>% 
+  filter(var_id %in% paste0("X", 23:41)) %>% 
+  mutate(label = str_extract(var_full, "(?<=\\[).*?(?=\\s?\\])"),
+         # clean up labels
+         label = str_remove(label, "\\(.*"),
+         label = str_remove(label, ", as assessed .*")) %>% 
+  select(var_id, label)
+
+pdata_institution <- pdata %>% 
+  left_join(labels, by = c("var" = "var_id"))
+```
+
+```{r}
+pdata_institution %>% 
+  ungroup() %>% 
+  arrange(desc(order), val) %>% 
+  mutate(prop = scales::percent(prop, accuracy = .1),
+         summary = glue::glue("{n} ({prop})")) %>% 
+  select(variable = label, value = val, summary) %>%
+  pivot_wider(names_from = value, values_from = summary,
+              values_fill = "0 (0.0%)", names_sort = TRUE) %>% 
+  knitr::kable()
+```
+
+
+```{r institutional-attitudes, fig.width=10, fig.height=7}
+# colours came from `RColorBrewer::brewer.pal("PiYG", n = 5)`, but with yellow 
+# as the midpoint
+# new colours: 
+purple <- c('#F9AEEF', '#B96FB0') # light, dark
+green <- c('#94D790', "#54984E") # light, dark
+blue <- c('#86CFFB', '#3792BD') # light, dark
+midpoint <- "#E0C47C"
+
+p1 <- pdata_institution %>% 
+  ggplot(aes(fct_reorder(label, order), prop, fill = val)) +
+  geom_chicklet(width = .7) +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values = c("#B96FB0", "#F9AEEF", "#E0C47C", "#94D790",
+                               "#54984E")) +
+  theme(legend.position = "top") +
+  guides(fill = guide_legend(nrow = 2, byrow = TRUE)) +
+  labs(x = NULL, y = NULL, fill = NULL) 
+
+# get missings
+p_nas <- nas %>% 
+  left_join(select(pdata_institution, var, order)) %>% 
+  left_join(labels, by = c("var" = "var_id")) %>% 
+  distinct() %>% 
+  group_by(label, order) %>% 
+  summarise(n = sum(n))
+
+p2 <- p_nas %>% 
+  ggplot(aes(y = fct_reorder(label, order), x = n)) +
+  geom_col(fill = "grey50", width = .7) +
+  labs(x = NULL, y = "# of answers of 'Not applicable' or 'I don't know'") +
+  scale_x_continuous(breaks = c(0, 32)) +
+  scale_y_discrete(position = "right") +
+  hrbrtheme_fixed(grid = "", plot_margin = margin(l = 5)) +
+  theme(panel.border = element_rect(fill = NA, colour = "grey80"),
+        axis.text.y = element_blank(),
+        axis.title.y = element_text( angle = 270))
+
+p1 + 
+  theme(plot.margin = margin()) + p2 +
+  plot_layout(widths = c(6, 1)) +
+  plot_annotation(caption = "n = 198")
+```
+
+
+# Personal view: X47 - X65
+"In your own personal opinion, how important should the following research activities be when making promotion decisions?  [Publishing a large number of research articles]"
+
+etc.
+
+```{r}
+step1 <- df %>% 
+  select(X47:X65) %>% 
+  pivot_longer(everything(), names_to = "var", values_to = "val") %>%
+  count(var, val)
+
+# remove dont knows and not applicables
+nas <- step1 %>% 
+  filter(val %in% c("I don't know", "Not applicable"))
+
+pdata <- step1 %>% 
+  anti_join(nas) %>% 
+  mutate(val = fct_relevel(val, "Very important", "Somewhat important",
+                           "Neither important nor unimportant", 
+                           "Somewhat unimportant", "Very unimportant")) %>% 
+  make_proportion(group = var, var = val, order_string = "\\simportant$")
+
+
+# get labels
+labels <- var_overview %>% 
+  filter(var_id %in% paste0("X", 47:65)) %>% 
+  mutate(label = str_extract(var_full, "(?<=\\[).*?(?=\\s?\\])"),
+         # clean up labels
+         label = str_remove(label, "\\(.*"),
+         label = str_remove(label, ", as assessed .*")) %>% 
+  select(var_id, label)
+
+pdata_individual <- pdata %>% 
+  left_join(labels, by = c("var" = "var_id"))
+```
+
+```{r}
+pdata_individual %>% 
+  ungroup() %>% 
+  arrange(desc(order), val) %>% 
+  mutate(prop = scales::percent(prop, accuracy = .1),
+         summary = glue::glue("{n} ({prop})")) %>% 
+  select(variable = label, value = val, summary) %>%
+  pivot_wider(names_from = value, values_from = summary,
+              values_fill = "0 (0.0%)", names_sort = TRUE) %>% 
+  knitr::kable()
+```
+
+
+```{r personal-attitudes, fig.width=10, fig.height=7}
+p1 <- pdata_individual %>% 
+  ggplot(aes(fct_reorder(label, order), prop, fill = val)) +
+  geom_chicklet(width = .7) +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values = c("#B96FB0", "#F9AEEF", "#E0C47C", "#94D790",
+                               "#54984E")) +
+  theme(legend.position = "top") +
+  guides(fill = guide_legend(nrow = 2, byrow = TRUE)) +
+  labs(x = NULL, y = NULL, fill = NULL) 
+
+# get missings
+p_nas <- nas %>% 
+  full_join(distinct(pdata_individual, var, order)) %>% 
+  replace_na(list(n = 0)) %>% 
+  left_join(labels, by = c("var" = "var_id")) %>% 
+  group_by(label, order) %>% 
+  summarise(n = sum(n))
+
+p2 <- p_nas %>% 
+  ggplot(aes(y = fct_reorder(label, order), x = n)) +
+  geom_col(fill = "grey50", width = .7) +
+  labs(x = NULL, y = "# of answers of 'Not applicable' or 'I don't know'") +
+  scale_x_continuous(breaks = c(0, 24)) +
+  scale_y_discrete(position = "right") +
+  hrbrtheme_fixed(grid = "", plot_margin = margin(l = 5)) +
+  theme(panel.border = element_rect(fill = NA, colour = "grey80"),
+        axis.text.y = element_blank(),
+        axis.title.y = element_text( angle = 270))
+
+p1 + 
+  theme(plot.margin = margin()) + p2 +
+  plot_layout(widths = c(6, 1)) +
+  plot_annotation(caption = "n = 198")
+
+```
+
+
+# Comparison
+```{r}
+institutional_values <- get_values(df, X23:X41, source = "institutional", 
+                                   var_overview)
+personal_values <- get_values(df, X47:X65, source = "personal", 
+                              var_overview)
+
+institutional_scores <- bootstrap_values(institutional_values)
+personal_scores <- bootstrap_values(personal_values)
+
+all_scores <- bind_rows(institutional_scores, personal_scores)
+all_scores
+
+# compute differences
+differences <- all_scores %>% 
+  select(label, Mean, source) %>% 
+  pivot_wider(names_from = source, values_from = Mean) %>% 
+  mutate(diff = personal - institutional) 
+
+differences %>% 
+  rename(Question = label) %>% 
+  arrange(diff) %>% 
+  mutate(across(where(is.numeric), ~round(.x, digits = 2))) %>% 
+  knitr::kable()
+```
+
+
+```{r}
+final_scores <- all_scores %>% 
+  left_join(differences) %>% 
+  select(-institutional, -personal)
+
+final_scores
+```
+
+```{r comparison, fig.width=9, fig.height=8}
+dodge_width <- .2
+
+custom_blue <- "#3792BD"
+yellow <- "#E0C47C"
+# "#F9AEEF", "#E0C47C", "#94D790",
+
+bigger_text_size <- 15
+
+pdata <- final_scores %>% 
+  mutate(source = recode(source, personal = "Personal view", 
+                         institutional = "Perceived institutional view"))
+comparison <- pdata %>% 
+  ggplot(aes(Mean, fct_rev(fct_reorder(str_wrap(label, 40), diff)))) +
+  geom_linerange(aes(xmin = Lower, xmax = Upper, group = fct_rev(source)),
+                 position = position_dodge(width = dodge_width),
+                 colour = "grey60") +
+  geom_point(aes(colour = fct_rev(source)), size = 2.6,
+             position = position_dodge(width = dodge_width)) +
+  five_point_scale() +
+  scale_colour_manual(values = c(
+    `Personal view` =  yellow, #"#B96FB0",
+    `Perceived institutional view` = custom_blue #"#54984E"
+  )) +
+  labs(y = NULL, colour = NULL, x = NULL) +
+  theme(legend.position = "top", plot.margin = margin(), 
+        legend.text = element_text(size = bigger_text_size),
+        axis.text.y = element_text(size = bigger_text_size),
+        axis.text.x = element_text(size = bigger_text_size))
+comparison
+```
+
+# Combine them
+```{r comparison-enhanced, fig.height=11, fig.width=12}
+arrows <- png::readPNG(here::here("analysis-notebooks/comparison-addition.PNG"),
+                       native = TRUE)
+comparison + wrap_elements(panel = arrows) +
+  plot_layout(widths = c(5, 1))
+```
+
+# Correlational analysis
+Wondering: are correlations within individuals similar to above picture, or is 
+this another angle?
+
+```{r}
+cor_data <- bind_rows(personal_values, institutional_values) %>% 
+  select(-val) %>% 
+  pivot_wider(names_from = "source", values_from = "num_val") %>% 
+  group_by(label)
+
+cor_data %>% 
+  summarise(correlation = cor(personal, institutional, use = "pairwise",
+                              method = "spearman")) %>% 
+  arrange(correlation) %>% 
+  mutate(correlation = round(correlation, 3))
+```
+
+```{r}
+conf_ints <- cor_data %>% 
+  summarise(res = list(cor.test(personal, institutional, conf.level = .995))) %>% 
+  mutate(cor = map_dbl(res, pluck, "estimate"),
+         conf_int = map(res, pluck, "conf.int"),
+         lower = map_dbl(conf_int, pluck, 1),
+         upper = map_dbl(conf_int, pluck, 2)) %>% 
+  select(label, cor, lower, upper) %>% 
+  arrange(cor)
+conf_ints
+```
+
+```{r corr-comparison, fig.width=8, fig.height=7}
+conf_ints %>% 
+  ggplot(aes(cor, fct_reorder(label, cor))) +
+  geom_linerange(aes(xmin = lower, xmax = upper)) +
+  geom_point(size = 2, colour = custom_blue) +
+  labs(x = "Correlation between personal and perceived institutional view",
+       y = NULL)
+```
+
+There is big uncertainty in the estimates, and the linear approach inherent with
+correlations might not be the right model. Following this approach,
+it seems that for some 
+questions personal and institutional views are more aligned than for others.
+This does not follow the exact same pattern as with the above comparison.
+
+To explore a little further how these values come about.
+
+Now do mean differences instead of difference of means as in original analysis.
+
+```{r}
+cor_data %>% 
+  summarise(diff = mean(personal - institutional, na.rm = TRUE)) %>% 
+  arrange(diff) %>% 
+  mutate(diff = round(diff, 3)) %>% 
+  knitr::kable()
+```
+
+This is not identical but very close to our original figure.
+
+
+```{r}
+cor_data %>% 
+  filter(str_detect(label, "Openly.*")) %>% 
+  tabyl(personal, institutional) %>% 
+  custom_adorns() %>% 
+  knitr::kable()
+```
+
+```{r}
+cor_data %>% 
+  filter(str_detect(label, "highly regarded")) %>% 
+  tabyl(personal, institutional) %>% 
+  custom_adorns() %>% 
+  knitr::kable()
+```
+
+```{r}
+cor_data %>% 
+  filter(str_detect(label, "code")) %>% 
+  tabyl(personal, institutional) %>% 
+  custom_adorns() %>% 
+  knitr::kable()
+```
+
+# Summarise indicators into groups
+```{r}
+all_Values <- bind_rows(institutional_values, personal_values) %>% 
+  mutate(label = str_remove(label, "\\s$")) %>% 
+  left_join(expanded_labels) %>% 
+  rename(id = X1)
+all_Values
+```
+
+```{r}
+scores_by_individual <- all_Values %>% 
+  group_by(id, group, source) %>% 
+  summarise(score = mean(num_val))
+```
+
+```{r}
+demographics <- df %>% 
+  select(id = X1, disciplines_recoded_wos, acad_age = X87, gender = X84,
+         acad_rol = X85) %>% 
+  mutate(# fix two cases where data was entered incorrectly
+         acad_age = case_when(acad_age == 19999 ~ 1999,
+                              acad_age == 84 ~ 1984,
+                              TRUE ~ acad_age),
+         acad_age = 2021 - acad_age)
+```
+
+```{r age_histogram}
+demographics %>% 
+  ggplot(aes(acad_age)) +
+  geom_histogram()
+```
+
+
+
+```{r}
+scores_by_individual <- scores_by_individual %>% 
+  left_join(demographics)
+scores_by_individual
+```
+
+## by disciplines
+```{r scores-by-discipline, fig.height=9, fig.width=8}
+scores_by_individual %>% 
+  mutate(group = str_wrap(group, width = 12)) %>% 
+  filter(!is.na(disciplines_recoded_wos)) %>% 
+  ggplot(aes(score, disciplines_recoded_wos)) +
+  geom_boxplot(width = .7, outlier.alpha = 0, notch = TRUE, 
+               fill = custom_blue) +
+  #geom_jitter(height = .1, width = .01, colour = custom_blue, alpha = .5) +
+  five_point_scale(compact = TRUE) +
+  facet_grid(rows = vars(group), cols = vars(source)) +
+  labs(y = NULL) +
+  theme(panel.spacing.x = unit(4, "lines"))
+```
+
+No substantive differences. Sample size is too small to allow drawing 
+conclusions here, since precisions would need to be much higher, given that we
+are conducting a large number of comparisons at once. 
+
+## by gender
+```{r scores-by-gender, fig.height=8, fig.width=8}
+scores_by_individual %>% 
+  mutate(group = str_wrap(group, width = 12)) %>% 
+  filter(!is.na(gender), gender != "Prefer not to say") %>% 
+  ggplot(aes(score, gender)) +
+  geom_boxplot(width = .7, outlier.alpha = 0, notch = TRUE) +
+  geom_jitter(height = .05, width = .01, colour = custom_blue, alpha = .2) +
+  facet_grid(rows = vars(group), cols = vars(source)) +
+  five_point_scale(compact = TRUE) +
+  theme(panel.spacing.x = unit(4, "lines")) +
+  labs(y = NULL, x = "Aggregated score across indicator group")
+```
+
+There are no differences regarding the institutional side. Regarding personal
+views, women tend to give higher importance to community activities and
+societal and economic impact than men, all other aspects being similar.
+
+This finding should be backed up by checking the gender distribution across
+disciplines. Life sci & Biomed also has a higher score in these two items, 
+although only slightly.
+
+
+### Gender by discipline
+```{r, message=FALSE}
+library(tidylog)
+```
+
+
+```{r}
+tab <- demographics %>% 
+  filter(!is.na(disciplines_recoded_wos), gender != "Prefer not to say") %>% 
+  tabyl(disciplines_recoded_wos, gender)
+
+tab %>% 
+  chisq.test()
+
+tab %>% 
+  custom_adorns() %>% 
+  knitr::kable()
+```
+
+Women are much better represented in Life Sci & Biomed.
+
+It would therefore seem, that the higher higher importance to community
+activities and societal and economic impact can still be attributed to gender,
+and not discipline.
+
+In causal terms, gender would have an impact on scores, as well as on discipline,
+but discipline only on scores, and not on gender.
+
+To assess the total causal effect of gender, we therefore do not need to control
+for gender. For the partial effect of gender alone, we would need to control for
+discipline.
+
+```{r, include=FALSE}
+options("tidylog.display" = list())
+```
+
+
+### scores by gender continued
+
+```{r}
+model_data <- scores_by_individual %>% 
+  filter(!is.na(gender), gender != "Prefer not to say") %>% 
+  filter(source == "personal", group == "Societal & economic impact")
+
+m <- aov(score ~ gender, data = model_data)
+summary(m)
+
+m2 <- aov(score ~ gender + disciplines_recoded_wos, data = model_data)
+summary(m2)
+```
+
+```{r}
+model_data <- scores_by_individual %>% 
+  filter(!is.na(gender), gender != "Prefer not to say") %>% 
+  filter(source == "personal", group == "Community activities")
+
+m <- aov(score ~ gender, data = model_data)
+summary(m)
+
+m2 <- aov(score ~ gender + disciplines_recoded_wos, data = model_data)
+summary(m2)
+```
+
+In both cases, differences between genders regarding the personal view on
+community activities and societal & economic impact are not statistically 
+significant. This does not change (in either direction) when also controlling
+for gender. Overall, however, this method is not well suited to the data, given
+that the data are in the interval [0, 1], but the method (ANOVA) assumes 
+normally distributed error terms, which is not the case here. 
+
+
+## by country
+```{r scores-by-country, fig.height=8, fig.width=8, eval=FALSE}
+scores_by_individual %>% 
+  ungroup() %>% 
+  mutate(country_lumped = fct_lump_n(country, 3)) %>% 
+  mutate(group = str_wrap(group, width = 12)) %>% 
+  ggplot(aes(score, country_lumped)) +
+  geom_boxplot(width = .7, outlier.alpha = 0, notch = TRUE) +
+  geom_jitter(height = .05, width = .01, colour = custom_blue, alpha = .2) +
+  facet_grid(rows = vars(group), cols = vars(source)) +
+  five_point_scale(compact = TRUE) +
+  theme(panel.spacing.x = unit(4, "lines")) +
+  labs(y = NULL, x = "Aggregated score across indicator group")
+```
+
+This comparison is again fraught with difficulties, since there are numerous 
+pairs which can be compared. The main difference that stands out is the 
+relatively low perceived institutional relevance that respondents from the USA
+report for societal & economic impact. It is hard to draw any further 
+conclusions, given the small sample size.
+
+We can test this specific table, but would need to reduce the significance
+threshold at least by the factor 10 (5% -> 0.5%).
+
+```{r, eval=FALSE}
+model_data <- scores_by_individual %>% 
+  ungroup() %>% 
+  mutate(country_lumped = fct_lump_n(country, 3)) %>% 
+  filter(source == "institutional", group == "Societal & economic impact")
+
+m <- aov(score ~ country_lumped, data = model_data)
+summary(m)
+```
+
+As such, the p-value is not small enough to meet this threshold. So the results
+are still not strong enough to discard the assumption that all means in this
+group might be similar.
+
+## Academic age
+```{r}
+scores_by_individual %>% 
+  group_by(source, group) %>% 
+  summarise(res = list(cor.test(acad_age, score, conf.level = .995))) %>% 
+  mutate(cor = map_dbl(res, pluck, "estimate"),
+         conf_int = map(res, pluck, "conf.int"),
+         lower = map_dbl(conf_int, pluck, 1),
+         upper = map_dbl(conf_int, pluck, 2)) %>% 
+  select(source, group, cor, lower, upper) %>% 
+  arrange(source, desc(cor)) %>% 
+  mutate(across(where(is.numeric), round, digits = 2)) %>% 
+  knitr::kable()
+```
+
+There are no substantive correlations. The only one which could be claimed as
+being weak, is in the personal view on alternative academic impact. 
+
+```{r score-vs-acad-age, fig.height=15, fig.width=10}
+scores_by_individual %>% 
+  ggplot(aes(acad_age, score)) +
+  geom_jitter(height = .1, width = .5, alpha = .5) +
+  geom_smooth(colour = custom_blue) +
+  facet_grid(rows = vars(group),
+             cols = vars(source)) +
+  scale_y_continuous(
+      breaks = c(1, 3, 5),
+      labels = c("Very important", "Neither/nor", "Very unimportant")
+  ) +
+  labs(x = "Academic age", y = NULL)
+```
+
+The low linear relationship is confirmed via the plot. However, there seems to
+be some inverse U-shaped pattern, where older and younger respondents give 
+higher weight to some of the concepts, while middle aged respondents (academic
+age of 15-30 years) give them lower weight. However, these trends are not 
+present in all cases and overall not very strong.

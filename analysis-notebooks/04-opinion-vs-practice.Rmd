@@ -1,0 +1,237 @@
+---
+title: "Opinion vs practice"
+author: "Thomas Klebel"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    keep_md: true
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggchicklet)
+library(patchwork)
+library(janitor)
+library(tidylog)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, dpi = 300)
+
+extrafont::loadfonts(device = "win")
+
+theme_set(hrbrthemes::theme_ipsum_rc(base_family = "Hind"))
+
+df <- targets::tar_read(shareable_data)
+var_overview <- targets::tar_read(var_overview)
+
+opinion_levels <- c("Very important", "Somewhat important",
+                           "Neither important nor unimportant", 
+                           "Somewhat unimportant", "Very unimportant",
+                           "I don't know", "Not applicable")
+
+custom_blue <- "#3792BD"
+```
+
+
+# Code sharing - who is missing?
+Characterise respondents that answer "Not applicable" to code sharing.
+
+```{r}
+# X53 is personal view on code sharing
+df %>% 
+  mutate(X53 = factor(X53, levels = opinion_levels)) %>% 
+  tabyl(disciplines_recoded_wos, X53) %>% 
+  custom_adorns() %>% 
+  knitr::kable()
+```
+
+The answers "I don't know" and "Not applicable" are clearly over-represented 
+among SSH in the
+question on the personal relevance of code sharing.
+
+
+# Relevance of impact beyond academia vs institutional view
+
+# Open practice vs opinion
+## OA publishing
+```{r}
+# OA publishing
+# X68 = pubs total
+# X69 = pubs OA
+# X51 = personal opinion on OA
+# X27 = institutional opinion on OA
+
+oa_practice <- df %>% 
+  select(X27, X51, X68, X69) %>% 
+  mutate(OA_rate = X69/X68,
+         X51 = factor(X51, levels = opinion_levels),
+         X27 = factor(X27, levels = opinion_levels))
+oa_practice
+```
+
+```{r}
+ggplot(oa_practice, aes(OA_rate)) +
+  geom_histogram(bins = 20)
+```
+Values that should not exist, i.e. more OA articles than total articles.
+-> Removing those two cases
+
+```{r}
+oa_practice <- oa_practice %>% 
+  filter(OA_rate <= 1 | is.na(OA_rate))
+```
+
+
+
+```{r OA-views, fig.width=8, fig.height=8}
+set.seed(123)
+oa_practice %>% 
+  pivot_longer(c(X27, X51), names_to = "variable") %>% 
+  mutate(variable_rec = recode(variable, X27 = "Perceived institutional view",
+                               X51 = "Personal view")) %>% 
+  ggplot(aes(OA_rate, fct_rev(value))) +
+  geom_boxplot(width = .5, outlier.alpha = 0) +
+  geom_jitter(height = .1, width = .01, colour = custom_blue, alpha = .5) +
+  facet_wrap(vars(variable_rec), nrow = 2) +
+  scale_x_continuous(labels = scales::percent) +
+  labs(x = "% of publications which are OA", y = "Importance of OA publishing")
+```
+General trend holds: if respondents think OA is more important, they also have 
+more OA publications, and vice versa. 
+
+More strict tests for personal view:
+```{r}
+m1 <- aov(OA_rate ~ X51, data = oa_practice)
+```
+```{r}
+summary(m1)
+```
+
+```{r}
+pairwise.t.test(oa_practice$OA_rate, oa_practice$X51, p.adjust.method = "BH")
+```
+
+Some group differences are "statistically significant". But this also comes down
+to the method used for the correction. Overall, it seems reasonable to state 
+that higher OA share is related to stronger opinion in favour.
+
+```{r}
+# effect size
+eta <- DescTools::EtaSq(m1)[1]
+eta
+```
+
+Not versed with these values, would need to look into how specifically interpret.
+
+## Open data
+```{r}
+# Data sharing
+# X72 = pubs total
+# X73 = pubs OA
+# X52 = personal opinion on OD
+# X28 = institutional opinion on OD
+
+od_practice <- df %>% 
+  select(X28, X52, X72, X73) %>% 
+  mutate(OD_rate = X73/X72,
+         X52 = factor(X52, levels = opinion_levels),
+         X28 = factor(X28, levels = opinion_levels))
+od_practice
+```
+
+```{r}
+ggplot(od_practice, aes(OD_rate)) +
+  geom_histogram(bins = 20)
+```
+Values that should not exist, i.e. more open datasets than total datasets
+-> Removing this case.
+
+```{r}
+od_practice <- od_practice %>% 
+  filter(OD_rate <= 1 | is.na(OD_rate)) %>% 
+  filter(!is.na(OD_rate))
+```
+
+```{r OD-views, fig.width=8, fig.height=8}
+set.seed(123)
+od_practice %>% 
+  pivot_longer(c(X28, X52), names_to = "variable") %>% 
+  mutate(variable_rec = recode(variable, X28 = "Perceived institutional view",
+                               X52 = "Personal view")) %>% 
+  ggplot(aes(OD_rate, fct_rev(value))) +
+  geom_boxplot(width = .5, outlier.alpha = 0) +
+  geom_jitter(height = .1, width = .01, colour = custom_blue, alpha = .5) +
+  facet_wrap(vars(variable_rec), nrow = 2) +
+  scale_x_continuous(labels = scales::percent) +
+  labs(x = "% of datasets which are open", y = "Importance of OD sharing")
+```
+
+```{r}
+m2 <- aov(OD_rate ~ X28  + X52, data = od_practice)
+summary(m2)
+```
+Differences are not statistically significant. However, this model is likely not
+suitable to the data at hand (zero and one inflation, general structure of 
+response in interval [0, 1], etc.)
+
+A better alternative is to look at chisquare tables. The following table is
+for the institutional view.
+```{r}
+inst_table <- od_practice %>% 
+  filter(!(X28 %in% c("Not applicable", "I don't know"))) %>% 
+  mutate(X28 = fct_drop(X28)) %>% 
+  mutate(od_cats = cut_interval(OD_rate, 4) %>% fct_rev()) %>% 
+  tabyl(od_cats, X28)
+
+chisq.test(inst_table)  
+
+inst_table %>% 
+  custom_adorns() %>% 
+  knitr::kable()
+```
+
+```{r}
+personal_table <- od_practice %>% 
+  filter(!(X52 %in% c("Not applicable", "I don't know"))) %>% 
+  mutate(X52 = fct_drop(X52)) %>% 
+  mutate(od_cats = cut_interval(OD_rate, 4) %>% fct_rev()) %>% 
+  tabyl(od_cats, X52)
+
+chisq.test(personal_table)  
+
+personal_table %>% 
+  custom_adorns() %>% 
+  knitr::kable()
+```
+
+Based on these tables:
+
+- There seems to be no association between personal views on OD as a promotion
+criterion and actual OD practice.
+- There seems to be some association between perceived institutional view on OD
+as a promotion criterion and actual OD practice. 
+- This is contrary to the conclusions that one might glimpse from comparing 
+medians. Why?
+
+# Influence of policies on choice of venue
+Question: In the last three years, my choice of publication venue (journal, book publisher, conference, etc.) was influenced by the promotion criteria of my university.
+
+With "other" values
+```{r policy-venue, fig.width=6, fig.height=4}
+df %>% 
+  select(X71) %>% 
+  mutate(X71 = fct_relevel(X71,
+                           "Very often", "Often", "Neither often nor rarely",
+                           "Rarely", "Very rarely") %>% fct_rev()) %>% 
+  plot_bar(X71, reorder = FALSE, nudge_y = .01)
+```
+
+Without
+```{r policy-venue-2, fig.width=6, fig.height=2.5}
+df %>% 
+  select(X71) %>% 
+  filter(!(X71 %in% c("I don't know", "Does not apply"))) %>% 
+  mutate(X71 = fct_relevel(X71,
+                           "Very often", "Often", "Neither often nor rarely",
+                           "Rarely", "Very rarely") %>% fct_rev()) %>% 
+  plot_bar(X71, reorder = FALSE, nudge_y = .01)
+```
+This version has 178 cases.

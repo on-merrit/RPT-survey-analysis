@@ -1,0 +1,231 @@
+---
+title: "Institutional context"
+author: "Thomas Klebel"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    keep_md: true
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggchicklet)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, dpi = 300)
+
+theme_set(hrbrthemes::theme_ipsum_rc(base_family = "Hind"))
+
+df <- targets::tar_read(shareable_data)
+var_overview <- targets::tar_read(var_overview)
+```
+
+
+# Do you see yourself working at the same institution in 5 years? (X17)
+```{r}
+df %>% make_table(X17)
+df %>%
+  count(X18)
+```
+
+# Do you intend to apply for a promotion within the next 5 years? (X19)
+```{r}
+df %>% make_table(X19)
+```
+
+# Combine them
+```{r institutional-context, fig.width=8, fig.height=3}
+pdata <- df %>% 
+  select(X17, X19) %>% 
+  pivot_longer(everything(), names_to = "var", values_to = "val") %>% 
+  count(var, val) %>% 
+  group_by(var) %>% 
+  mutate(percent = n/sum(n),
+         val = fct_relevel(val, "Yes", "No", "Other", "I don't know", 
+                           "Not applicable"))
+
+pdata <- pdata %>% 
+  mutate(var = case_when(
+    var == "X17" ~ "Do you see yourself working at the same institution in 5 years?",
+    TRUE ~ "Do you intend to apply for a promotion within the next 5 years?"),
+         var = str_wrap(var, 30))
+
+pdata %>% 
+  ggplot(aes(var, percent, fill = val)) +
+  geom_chicklet(width = .7) +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values = c(
+    "Yes" = "#B96FB0",
+    "No" = "#54984E",
+    "Other" = "#E0C47C",
+    "I don't know" = "grey80", #C9D1F9
+    "Not applicable" = "#1C94BB"
+  )) +
+  labs(x = NULL, y = NULL, fill = NULL) +
+  theme(legend.position = "top")
+```
+
+```{r}
+pdata %>% 
+  mutate(var = str_replace_all(var, "\\n", " ")) %>% 
+  arrange(var, val) %>% 
+  knitr::kable()
+```
+
+# Familiarity with promotion policy (X21, X22)
+
+- "For each of the statements below provide your personal level of agreement or disagreement: [I know where to find the promotion policy relevant to my current career stage as a researcher (e.g. institution’s website, intranet or handbook)]"
+
+```{r}
+df %>% 
+  filter(X21 != "Not applicable") %>% 
+  make_table(X21, sort = FALSE)
+```
+
+
+- For each of the statements below provide your personal level of agreement or disagreement: [I am familiar with the promotion policy that applies to my current career stage]
+
+```{r}
+df %>% 
+  filter(X22 != "Not applicable") %>% 
+  make_table(X22, sort = FALSE)
+```
+
+## Combine both
+
+```{r knowledge-of-prt-policies, fig.width=8, fig.height=3.5}
+pdata <- df %>% 
+  select(X21, X22) %>% 
+  pivot_longer(everything(), names_to = "var", values_to = "val") %>% 
+  filter(val != "Not applicable") %>% 
+  count(var, val) %>% 
+  group_by(var) %>% 
+  mutate(percent = n/sum(n),
+         val = fct_relevel(val, "Completely agree", "Agree", 
+                           "Neither agree nor disagree", "Disagree",
+                           "Completely disagree", "I don't know"))
+
+pdata <- pdata %>% 
+  mutate(var = case_when(
+    var == "X21" ~ "I know where to find the promotion policy relevant to my current career stage.",
+    TRUE ~ "I am familiar with the promotion policy that applies to my current career stage"),
+         var = str_wrap(var, 30))
+
+pdata %>% 
+  ggplot(aes(var, percent, fill = val)) +
+  geom_chicklet(width = .7) +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values = c("#B96FB0", "#F9AEEF", "#E0C47C", "#94D790",
+                               "#54984E", "grey80")) +
+  guides(fill = guide_legend(byrow = TRUE)) +
+  labs(x = NULL, y = NULL, fill = NULL) +
+  theme(legend.position = "top")
+```
+
+```{r}
+pdata %>%
+  mutate(var = str_replace_all(var, "\\n", " ")) %>% 
+  arrange(var, val) %>% 
+  knitr::kable()
+```
+
+
+# Gender and other equality
+## Institutional opinion
+```{r}
+base <- df %>%
+  select(X1, X44:X45) %>%
+  pivot_longer(-X1, names_to = "var", values_to = "val") 
+
+# get labels
+labels <- var_overview %>%
+  filter(var_id %in% c("X44", "X45")) %>%
+  mutate(label = str_extract(var_full, "(?<=\\[).*?(?=\\s?\\])")) %>%
+  select(var_id, label)
+
+combined <- base %>%
+  left_join(labels, by = c("var" = "var_id")) %>%
+  select(-var)
+
+pdata <- combined %>% 
+  count(label, val) %>% 
+  make_proportion(group = label, var = val) %>% 
+  mutate(val = fct_relevel(
+    val,
+    "Completely agree", "Agree", "Neither agree nor disagree", "Disagree", 
+    "Completely disagree", "I don't know", "Not applicable"
+  ))
+
+```
+```{r}
+pdata %>% 
+  select(-order) %>% 
+  arrange(label, val) %>% 
+  knitr::kable()
+```
+
+
+```{r equality-institution, fig.width=9, fig.height=4}
+pdata %>% 
+  ungroup() %>% 
+  mutate(label = str_wrap(label, 40)) %>% 
+  ggplot(aes(label, prop, fill = val)) +
+  geom_chicklet(width = .7) +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values = c("#B96FB0", "#F9AEEF", "#E0C47C", "#94D790",
+                               "#54984E", "grey80", "#1C94BB")) +
+  guides(fill = guide_legend(byrow = TRUE)) +
+  labs(x = NULL, y = NULL, fill = NULL) +
+  theme(legend.position = "top")
+```
+
+## Personal opinion
+
+```{r}
+base <- df %>%
+  select(X1, X66:X67) %>%
+  pivot_longer(-X1, names_to = "var", values_to = "val") 
+
+# get labels
+labels <- var_overview %>%
+  filter(var_id %in% c("X66", "X67")) %>%
+  mutate(label = str_extract(var_full, "(?<=\\[).*?(?=\\s?\\])")) %>%
+  select(var_id, label)
+
+combined <- base %>%
+  left_join(labels, by = c("var" = "var_id")) %>%
+  select(-var)
+
+pdata <- combined %>% 
+  count(label, val) %>% 
+  make_proportion(group = label, var = val) %>% 
+  mutate(val = fct_relevel(
+    val,
+    "Completely agree", "Agree", "Neither agree nor disagree", "Disagree", 
+    "Completely disagree", "I don't know", "Not applicable"
+  ))
+
+```
+```{r}
+pdata %>% 
+  select(-order) %>% 
+  arrange(label, val) %>% 
+  knitr::kable()
+```
+
+
+```{r equality-personal, fig.width=9, fig.height=4}
+pdata %>% 
+  ungroup() %>% 
+  mutate(label = str_wrap(label, 40)) %>% 
+  ggplot(aes(label, prop, fill = val)) +
+  geom_chicklet(width = .7) +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values = c("#B96FB0", "#F9AEEF", "#E0C47C", "#94D790",
+                               "#54984E", "grey80", "#1C94BB")) +
+  guides(fill = guide_legend(byrow = TRUE)) +
+  labs(x = NULL, y = NULL, fill = NULL) +
+  theme(legend.position = "top")
+```

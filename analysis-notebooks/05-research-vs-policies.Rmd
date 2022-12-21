@@ -1,0 +1,261 @@
+---
+title: "Importance for research vs opinions"
+author: "Thomas Klebel"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    keep_md: true
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggchicklet)
+library(patchwork)
+library(janitor)
+library(ca)
+library(corrplot)
+
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, dpi = 300)
+
+extrafont::loadfonts(device = "win")
+
+theme_set(hrbrthemes::theme_ipsum_rc(base_family = "Hind"))
+
+df <- targets::tar_read(shareable_data)
+var_overview <- targets::tar_read(var_overview)
+
+opinion_levels <- c("Very important", "Somewhat important",
+                           "Neither important nor unimportant", 
+                           "Somewhat unimportant", "Very unimportant",
+                           "I don't know", "Not applicable")
+
+custom_blue <- "#3792BD"
+```
+
+Do two approaches:
+
+1. Similar to the general comparison plot, comparing aggregate levels
+2. Correspondence analysis
+
+```{r}
+# How important to engage with
+# X78 = public
+# X80 = industry
+# X82 = Policy
+
+# Institutional policy
+# X30  = public
+# X31  = industry
+# X33 = policy
+
+core_data <- df %>% 
+  select(inst_public = X30, inst_industry = X31, inst_policy = X33,
+         imp_public = X78, imp_industry = X80, imp_policy = X82)
+
+core_data %>% 
+  head(10) %>% 
+  knitr::kable()
+```
+
+```{r}
+long_data <- core_data %>% 
+  mutate(across(.fns = get_numeric_val)) %>% 
+  pivot_longer(everything(), names_to = c("source", "type"),
+               names_pattern = "(.*)_(.*)") %>% 
+  mutate(source = recode(source, inst = "Perceived institutional view", 
+                         imp = "Importance for success of research"))
+```
+
+
+```{r}
+bootstrapped <- long_data %>% 
+  group_by(source, type) %>% 
+  summarise(res = list(Hmisc::smean.cl.boot(value))) %>%
+  unnest_wider(res)
+```
+```{r importance-for-research-vs-policy}
+dodge_width <- .2
+yellow <- "#E0C47C"
+
+bootstrapped %>% 
+  ggplot(aes(Mean, type, colour = source)) +
+  geom_linerange(aes(xmin = Lower, xmax = Upper, group = fct_rev(source)),
+                 position = position_dodge(width = dodge_width),
+                 colour = "grey60") +
+  geom_point(aes(colour = fct_rev(source)), size = 2.6,
+             position = position_dodge(width = dodge_width)) +
+  five_point_scale() +
+    scale_colour_manual(values = c(
+    `Importance for success of research` =  yellow, #"#B96FB0",
+    `Perceived institutional view` = custom_blue #"#54984E"
+  )) +
+  labs(y = NULL, colour = NULL, x = NULL) +
+  theme(legend.position = "top")
+```
+
+Aggregate levels are very similar. Biggest dis-alignment with industry, although
+differences still quite close and within confidence intervals for the means.
+
+## Via correspondence analysis
+```{r}
+# simplify for plotting
+make_names_simple <- function(x, keep_NA = TRUE) {
+  if (keep_NA) {
+    case_when(
+      x == "Very important" ~ "++",
+      x == "Important" ~ "+",
+      x == "Somewhat important" ~ "+",
+      x == "Neither important nor unimportant" ~ "=",
+      x == "Unimportant" ~ "-",
+      x == "Somewhat unimportant" ~ "-",
+      x == "Very unimportant" ~ "--",
+      x == "I don't know" ~ "?",
+      x == "Not applicable" ~ "NA"
+    )
+  } else {
+    case_when(
+      x == "Very important" ~ "++",
+      x == "Important" ~ "+",
+      x == "Somewhat important" ~ "+",
+      x == "Neither important nor unimportant" ~ "=",
+      x == "Unimportant" ~ "-",
+      x == "Somewhat unimportant" ~ "-",
+      x == "Very unimportant" ~ "--",
+      x == "I don't know" ~ "?"
+    )
+  }
+
+}
+```
+
+```{r compute-mca}
+mca_model <- core_data %>%
+  mutate(across(everything(), make_names_simple)) %>% 
+  ca::mjca()
+```
+
+
+```{r}
+prettify <- list(
+  theme(legend.position = "top",
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.title.y = element_text(size = rel(1.5)),
+        axis.text = element_text(size = rel(1.2)),
+        legend.text = element_text(size = rel(1.1)))
+  #scale_color_manual(values = scale_spectral) 
+)
+```
+
+
+```{r mca-bare, fig.width=15, fig.height=15}
+# scale_short <- c("Indicator present" = "#3588BD", 
+#                     "Indicator not present" = "#C26574")
+
+mca_model %>%
+  plot_ca(font_size = 5, show.legend = TRUE) +
+  coord_fixed() +
+  prettify 
+```
+
+Second dimension is mainly NAs, so removing.
+
+```{r re-compute-mca}
+m2 <- core_data %>%
+  mutate(across(everything(), make_names_simple, keep_NA = FALSE)) %>% 
+  ca::mjca()
+```
+
+
+```{r mca-2, fig.width=15, fig.height=15}
+m2 %>%
+  plot_ca(font_size = 5, keep_labels = TRUE) +
+  coord_fixed() +
+  prettify 
+```
+
+Broadly speaking: categories agree to each other, all of them are similar.
+Only exception: perceived institutional policies of complete unimportance are a 
+little removed from the rest - level of unimportance is higher for these three
+than for the importance to own research.
+
+The general pattern is a typical horseshoe-patter and of no substantive 
+relevance.
+
+A correlation analysis likely might bring out more subtle differences.
+
+
+## Correlation analysis
+```{r}
+cor_base <- core_data %>% 
+  mutate(across(.fns = get_numeric_val))
+
+cor_matrix <- cor_base %>% 
+  cor(use = "pairwise.complete.obs", method = "spearman")
+cor_matrix %>% 
+  knitr::kable()
+```
+
+```{r}
+plot_correlation <- function(cor_matrix, cluster = TRUE) {
+  # code from http://www.sthda.com/english/wiki/visualize-correlation-matrix-using-correlogram
+  # col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+  
+  col <- colorRampPalette(c(yellow, "#FFFFFF", "#0880AB"))
+  order <- ifelse(cluster, "hclust", "original")
+  
+  corrplot::corrplot(
+    cor_matrix, method = "color", col = col(200),  
+    type = "upper", order = order, 
+    addCoef.col = "black", # Add coefficient of correlation
+    tl.col = "black", tl.srt = 45, #Text label color and rotation
+    # hide correlation coefficient on the principal diagonal
+    diag = FALSE 
+  )
+}
+```
+
+
+```{r correlation}
+plot_correlation(cor_matrix, cluster = FALSE)
+```
+Here, "inst" denotes the perceived institutional policy, and "imp" denotes
+the relevance to the respondents research. 
+
+Correlations in the upper right square (3x3), which shows the relationships 
+between perceived institutional policies and the relevance to research, are
+generally low to moderate. 
+
+The correlations between the three types, comparing relevance to research and
+perceived institutional policy, are .39 (public), .32 (industry), and
+.4 (policy). Thus, there seems to be moderate alignment between importance for
+researchers and perceived institutional policies.
+
+However, it is unclear how much alignment could be expected, and therefore,
+whether this finding is of any substantive interest. 
+
+All three key correlations are statistically significant (after correction
+for multiple comparisons via the approach developed by Benhamini & Hochberg 
+(1995))
+
+```{r correlation-significance}
+p_vals <- corrplot::cor.mtest(cor_base)$p
+adj_p_vals <- p.adjust(p_vals, method = "fdr") %>% 
+  matrix(nrow = 6) 
+
+colnames(adj_p_vals) <- colnames(p_vals)
+rownames(adj_p_vals) <- rownames(p_vals)
+
+col <- colorRampPalette(c(yellow, "#FFFFFF", "#0880AB"))
+corrplot::corrplot(
+  cor_matrix, method = "color",  col = col(200),
+  type = "upper", p.mat = adj_p_vals, sig.level = .05,
+  addCoef.col = "black", # Add coefficient of correlation
+  tl.col = "black", tl.srt = 45, #Text label color and rotation
+  # hide correlation coefficient on the principal diagonal
+  diag = FALSE 
+)
+```
+
+# Refs
+Benjamini, Y., and Hochberg, Y. (1995). Controlling the false discovery rate: a practical and powerful approach to multiple testing. Journal of the Royal Statistical Society Series B, 57, 289–300. doi: 10.1111/j.2517-6161.1995.tb02031.x. https://www.jstor.org/stable/2346101.
+
